@@ -75,16 +75,18 @@ def weights_roc(ranks: np.ndarray) -> np.ndarray:
 
 def judgments_bwm(w: np.ndarray, sigma: float, rng) -> dict:
     """Best-Worst: der Entscheider kennt Bestes B und Schlechtestes W (nach w); Verhältnisse a_B[j] = w_B / w_j und a_W[j] = w_j / w_W, mit Rauschen,
-    auf ganze Zahlen 1 bis 9 gerundet und abgeschnitten. `clipped` zählt die Urteile, deren Rohwert über 9 lag."""
+    auf ganze Zahlen 1 bis 9 gerundet und abgeschnitten. `clipped` zählt die Urteile, die beim Abschneiden verändert wurden: deren GERUNDETER Wert über 9 lag
+    (Rohwert ab 9,5; genau 9,5 rundet bei numpy zur geraden 10 und wird abgeschnitten)."""
     w = np.asarray(w, dtype=float)
     m = len(w)
     B, W = int(np.argmax(w)), int(np.argmin(w))
     raw_B = w[B] / w * np.exp(sigma * rng.normal(m))
     raw_W = w / w[W] * np.exp(sigma * rng.normal(m))
-    a_B = np.clip(np.round(raw_B), 1, C.BWM_MAX)
-    a_W = np.clip(np.round(raw_W), 1, C.BWM_MAX)
+    rounded_B, rounded_W = np.round(raw_B), np.round(raw_W)
+    a_B = np.clip(rounded_B, 1, C.BWM_MAX)
+    a_W = np.clip(rounded_W, 1, C.BWM_MAX)
     a_B[B], a_W[W] = 1.0, 1.0
-    clipped = int((np.delete(raw_B, B) > C.BWM_MAX + 0.5).sum() + (np.delete(raw_W, W) > C.BWM_MAX + 0.5).sum())
+    clipped = int((np.delete(rounded_B, B) > C.BWM_MAX).sum() + (np.delete(rounded_W, W) > C.BWM_MAX).sum())
     return {"B": B, "W": W, "a_B": a_B, "a_W": a_W, "clipped": clipped}
 
 
